@@ -30,7 +30,7 @@ export default function FountainDetailPage({ params }: { params: { id: string } 
   if (!fountain) return notFound();
 
   return (
-    <div className="max-w-3xl mx-auto bg-white p-6 rounded-2xl shadow">
+    <div className="bg-gray-900 max-w-3xl mx-auto p-6 rounded-2xl shadow">
       <h1 className="text-3xl font-bold mb-2">{fountain.number}</h1>
       <p className="text-gray-500 mb-2">{fountain.location}</p>
       <p className="mb-4">{fountain.description}</p>

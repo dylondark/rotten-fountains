@@ -5,7 +5,7 @@ import { Fountain } from "@/types/fountain";
 export default function FountainCard({ fountain }: { fountain: Fountain }) {
   return (
     <Link href={`/fountains/${fountain.id}`}>
-      <div className="p-4 bg-white rounded-2xl shadow hover:shadow-lg transition">
+      <div className="bg-gray-900 p-4 rounded-2xl shadow hover:shadow-lg transition">
         <h2 className="font-semibold text-lg">{fountain.number}</h2>
         <p className="text-sm text-gray-500 mb-2">{fountain.location}</p>
         <div className="flex items-center gap-1 mt-1">
