@@ -1,32 +1,37 @@
 import Image from "next/image";
 import { notFound } from "next/navigation";
-import { Fountain } from "@/types/fountain";
+import { Fountain } from "@/components/types/fountain";
+import pool from "@/utils/postgres";
 
-const fountains: Fountain[] = [
-  {
-    id: 1,
-    number: "Fountain #12",
-    location: "Engineering Building - 2nd Floor",
-    description: "Cool and steady flow near the vending machines.",
-    flavorDescription: "Tastes crisp with a hint of minerals.",
-    flavorRating: 8.5,
-    images: ["/fountains/12.jpg"],
-    videos: [],
-  },
-  {
-    id: 2,
-    number: "Fountain #5",
-    location: "Library - Ground Floor",
-    description: "Older unit, sometimes low pressure but clean.",
-    flavorDescription: "Slightly metallic, still refreshing.",
-    flavorRating: 7.2,
-    images: ["/fountains/5.jpg"],
-    videos: [],
-  },
-];
+async function getFountainById(id: number): Promise<Fountain | null> {
+  const client = await pool.connect();
+  try {
+    const res = await client.query("SELECT * FROM fountains WHERE id = $1", [id]);
+    if (res.rows.length === 0) return null;
+    const r: any = res.rows[0];
+    return {
+      id: r.id,
+      number: r.number,
+      location: r.location,
+      description: r.description,
+      flavorDescription: r.flavordescription || r.flavorDescription || "",
+      flavorRating: r.flavorrating || r.flavorRating || 0,
+      images: r.images || [],
+      videos: r.videos || [],
+    };
+  } catch (err) {
+    console.error("DB error fetching fountain:", err);
+    return null;
+  } finally {
+    client.release();
+  }
+}
 
-export default function FountainDetailPage({ params }: { params: { id: string } }) {
-  const fountain = fountains.find(f => f.id === Number(params.id));
+export default async function FountainDetailPage({ params }: { params: { id: string } }) {
+  const id = Number(params.id);
+  if (Number.isNaN(id)) return notFound();
+
+  const fountain = await getFountainById(id);
   if (!fountain) return notFound();
 
   return (

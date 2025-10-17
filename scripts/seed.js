@@ -28,7 +28,7 @@ async function seed() {
         'Cool and steady flow near the vending machines.',
         'Tastes crisp with a hint of minerals.',
         8.5,
-        ['\\/fountains/12.jpg']
+        ['/fountains/12.jpg']
       ],
       [
         'Fountain #5',
@@ -36,7 +36,7 @@ async function seed() {
         'Older unit, sometimes low pressure but clean.',
         'Slightly metallic, still refreshing.',
         7.2,
-        ['\\/fountains/5.jpg']
+        ['/fountains/5.jpg']
       ],
       [
         'Fountain #21',
@@ -44,7 +44,7 @@ async function seed() {
         'Modern refill station with cold, smooth water.',
         'Perfectly neutral and refreshing flavor.',
         9.3,
-        ['\\/fountains/21.jpg']
+        ['/fountains/21.jpg']
       ]
     ];
 
