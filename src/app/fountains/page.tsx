@@ -23,7 +23,7 @@ async function getFountainsFromDb(): Promise<Fountain[]> {
   }
 }
 
-export default async function FountainsPage() {
+export default async function FountainsPage({ searchParams }: { searchParams?: { q?: string } }) {
   let fountains: Fountain[] = [];
   try {
     fountains = await getFountainsFromDb();
@@ -32,11 +32,30 @@ export default async function FountainsPage() {
     console.error("Error fetching fountains:", err);
   }
 
+  // If a query is provided, filter the results server-side.
+  const q = (searchParams && searchParams.q) ? String(searchParams.q).trim().toLowerCase() : "";
+  let filtered = fountains;
+  if (q) {
+    filtered = fountains.filter((f) => {
+      // check string fields
+      const checks = [f.number, f.location, f.description, f.flavorDescription]
+        .filter(Boolean)
+        .map((s) => String(s).toLowerCase());
+
+      const strMatch = checks.some((s) => s.includes(q));
+
+      // also allow matching numeric flavorRating (e.g. searching '8.5' or '8')
+      const ratingMatch = String(f.flavorRating).toLowerCase().includes(q);
+
+      return strMatch || ratingMatch;
+    });
+  }
+
   return (
     <div>
       <h1 className="text-3xl font-bold mb-6">Campus Fountains</h1>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {fountains.map((fountain) => (
+        {filtered.map((fountain) => (
           <FountainCard key={fountain.id} fountain={fountain} />
         ))}
       </div>
