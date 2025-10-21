@@ -33,7 +33,7 @@ export function Navbar() {
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Search fountains..."
                 aria-label="Search fountains"
-                className="w-64 border border-gray-200 text-gray-700 rounded px-3 py-1 text-sm placeholder-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                className="w-64 border border-gray-200 text-gray-700 rounded px-3 py-1 text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
               />
             </div>
           </form>
@@ -41,6 +41,7 @@ export function Navbar() {
           <div className="flex gap-4 text-gray-700">
             <Link href="/fountains" className="hover:text-blue-600">Fountains</Link>
             <Link href="/about" className="hover:text-blue-600">About</Link>
+            <Link href="/signin" className="ml-2 px-3 py-1 rounded-full bg-blue-600 text-white hover:bg-blue-700 text-sm">Sign In</Link>
           </div>
         </div>
       </div>
