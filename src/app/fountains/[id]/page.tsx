@@ -33,22 +33,24 @@ async function getReviewsByFountainId(id: number) {
   try {
     // ensure reviews table exists (safe to run repeatedly)
     await client.query(`
-      CREATE TABLE IF NOT EXISTS reviews (
-        id SERIAL PRIMARY KEY,
-        fountain_id INTEGER NOT NULL REFERENCES fountains(id) ON DELETE CASCADE,
-        user_id INTEGER REFERENCES users(id),
-        user_name TEXT,
-        user_email TEXT,
-        rating REAL,
-        flavor_description TEXT,
-        comments TEXT,
-        created_at TIMESTAMPTZ DEFAULT now()
-      );
-    `);
+        CREATE TABLE IF NOT EXISTS reviews (
+          id SERIAL PRIMARY KEY,
+          fountain_id INTEGER NOT NULL REFERENCES fountains(id) ON DELETE CASCADE,
+          user_id INTEGER REFERENCES users(id),
+          rating REAL,
+          flavor_description TEXT,
+          comments TEXT,
+          created_at TIMESTAMPTZ DEFAULT now()
+        );
+      `);
 
     const res = await client.query(
-      `SELECT r.id, r.fountain_id, r.user_id, r.user_name, r.user_email, r.rating, r.flavor_description, r.comments, r.created_at
-       FROM reviews r WHERE r.fountain_id = $1 ORDER BY r.created_at DESC`,
+      `SELECT r.id, r.fountain_id, r.user_id, u.name AS user_name, u.email AS user_email,
+              r.rating, r.flavor_description, r.comments, r.created_at
+       FROM reviews AS r
+       INNER JOIN users AS u ON r.user_id = u.id
+       WHERE r.fountain_id = $1
+       ORDER BY r.created_at DESC`,
       [id]
     );
     return res.rows;

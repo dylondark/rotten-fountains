@@ -26,8 +26,6 @@ export async function POST(request: Request, { params }: { params: { id: string 
           id SERIAL PRIMARY KEY,
           fountain_id INTEGER NOT NULL REFERENCES fountains(id) ON DELETE CASCADE,
           user_id INTEGER REFERENCES users(id),
-          user_name TEXT,
-          user_email TEXT,
           rating REAL,
           flavor_description TEXT,
           comments TEXT,
@@ -36,21 +34,17 @@ export async function POST(request: Request, { params }: { params: { id: string 
       `);
 
       let userId = null;
-      let userName = null;
-      let userEmail = null;
 
       if (email) {
-        const u = await client.query('SELECT id, name, email FROM users WHERE email = $1', [email]);
+        const u = await client.query('SELECT id FROM users WHERE email = $1', [email]);
         if (u.rowCount > 0) {
           userId = u.rows[0].id;
-          userName = u.rows[0].name;
-          userEmail = u.rows[0].email;
         }
       }
 
       await client.query(
-        'INSERT INTO reviews (fountain_id, user_id, user_name, user_email, rating, flavor_description, comments) VALUES ($1,$2,$3,$4,$5,$6,$7)',
-        [fountainId, userId, userName, userEmail, rating, flavorDescription, comments]
+        'INSERT INTO reviews (fountain_id, user_id, rating, flavor_description, comments) VALUES ($1,$2,$3,$4,$5)',
+        [fountainId, userId, rating, flavorDescription, comments]
       );
 
       return NextResponse.json({ ok: true });
