@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Fountain } from "@/components/types/fountain";
 import pool from "@/utils/postgres";
 import ReviewForm from "@/components/reviews/ReviewForm";
+import { numberToGrade } from '@/utils/ratings';
 
 async function getFountainById(id: number): Promise<Fountain | null> {
   const client = await pool.connect();
@@ -83,7 +84,7 @@ export default async function FountainDetailPage({ params }: { params: { id: str
       </div>
 
       <p className="text-lg font-semibold mb-4">
-        💧 Flavor Rating: {fountain.flavorRating} / 10
+        💧 Flavor Rating: {numberToGrade(fountain.flavorRating)}
       </p>
 
       {fountain.images && (
@@ -133,9 +134,9 @@ export default async function FountainDetailPage({ params }: { params: { id: str
                 <div className="text-sm font-medium text-gray-600">{r.user_name || r.user_email}</div>
                 <div className="text-sm text-gray-600">{new Date(r.created_at).toLocaleString()}</div>
               </div>
-              <div className="mt-2 flex items-center gap-4">
-                <div className="text-lg font-semibold text-black">Rating: {r.rating ?? '—'} / 10</div>
-              </div>
+                    <div className="mt-2 flex items-center gap-4">
+                      <div className="text-lg font-semibold text-black">Rating: {numberToGrade(r.rating)}</div>
+                    </div>
               {r.flavor_description && (
                 <div className="mt-2">
                   <h3 className="font-semibold text-gray-800">Flavor description</h3>
@@ -145,7 +146,7 @@ export default async function FountainDetailPage({ params }: { params: { id: str
               {r.comments && (
                 <div className="mt-2">
                   <h3 className="font-semibold text-gray-800">Comments</h3>
-                  <p className="text-gray-700">{r.comments}</p>
+                    <p className="text-gray-700">{r.comments}</p>
                 </div>
               )}
             </div>

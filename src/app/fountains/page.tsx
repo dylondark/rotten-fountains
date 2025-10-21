@@ -1,6 +1,7 @@
 "use server";
 
 import FountainCard from "@/components/fountains/FountainCard";
+import { numberToGrade } from '@/utils/ratings';
 import { Fountain } from "@/components/types/fountain";
 import pool from "@/utils/postgres";
 
@@ -44,10 +45,12 @@ export default async function FountainsPage({ searchParams }: { searchParams?: {
 
       const strMatch = checks.some((s) => s.includes(q));
 
-      // also allow matching numeric flavorRating (e.g. searching '8.5' or '8')
-      const ratingMatch = String(f.flavorRating).toLowerCase().includes(q);
+  // also allow matching numeric flavorRating (e.g. searching '8.5' or '8')
+  const ratingMatch = String(f.flavorRating).toLowerCase().includes(q);
+  // allow matching letter grades (e.g. 'A', 'B+')
+  const gradeMatch = String(numberToGrade(f.flavorRating)).toLowerCase().includes(q);
 
-      return strMatch || ratingMatch;
+  return strMatch || ratingMatch || gradeMatch;
     });
   }
 

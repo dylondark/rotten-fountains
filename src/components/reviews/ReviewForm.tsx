@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ALL_GRADES, gradeToNumber } from '@/utils/ratings';
 import { useRouter } from "next/navigation";
 
 export default function ReviewForm({ fountainId }: { fountainId: number }) {
@@ -30,9 +31,10 @@ export default function ReviewForm({ fountainId }: { fountainId: number }) {
       return;
     }
 
-    const parsedRating = parseFloat(rating as any);
-    if (isNaN(parsedRating) || parsedRating < 0 || parsedRating > 10) {
-      setError('Please provide a rating between 0 and 10');
+    // rating now holds a letter grade (e.g. 'A', 'B+'). Map to numeric before sending.
+    const parsedRating = gradeToNumber(rating as any);
+    if (typeof parsedRating !== 'number' || Number.isNaN(parsedRating) || parsedRating < 0 || parsedRating > 10) {
+      setError('Please provide a valid grade');
       return;
     }
 
@@ -73,17 +75,17 @@ export default function ReviewForm({ fountainId }: { fountainId: number }) {
   return (
     <form onSubmit={onSubmit} className="space-y-3">
       <div>
-        <label className="block text-sm font-medium text-gray-700">Rating (0-10)</label>
-        <input
+        <label className="block text-sm font-medium text-gray-700">Grade</label>
+        <select
           value={rating}
           onChange={(e) => setRating(e.target.value)}
-          type="number"
-          step="0.1"
-          min="0"
-          max="10"
-          placeholder="8.5"
           className="mt-1 block w-40 border border-gray-200 text-gray-700 placeholder-gray-500 rounded px-3 py-1 focus:outline-none focus:ring-2 focus:ring-blue-200"
-        />
+        >
+          <option value="">Select a grade</option>
+          {ALL_GRADES.map((g) => (
+            <option key={g} value={g}>{g}</option>
+          ))}
+        </select>
       </div>
 
       <div>
