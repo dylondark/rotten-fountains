@@ -2,6 +2,7 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { Fountain } from "@/components/types/fountain";
 import pool from "@/utils/postgres";
+import ReviewForm from "@/components/reviews/ReviewForm";
 
 async function getFountainById(id: number): Promise<Fountain | null> {
   const client = await pool.connect();
@@ -27,12 +28,46 @@ async function getFountainById(id: number): Promise<Fountain | null> {
   }
 }
 
+async function getReviewsByFountainId(id: number) {
+  const client = await pool.connect();
+  try {
+    // ensure reviews table exists (safe to run repeatedly)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS reviews (
+        id SERIAL PRIMARY KEY,
+        fountain_id INTEGER NOT NULL REFERENCES fountains(id) ON DELETE CASCADE,
+        user_id INTEGER REFERENCES users(id),
+        user_name TEXT,
+        user_email TEXT,
+        rating REAL,
+        flavor_description TEXT,
+        comments TEXT,
+        created_at TIMESTAMPTZ DEFAULT now()
+      );
+    `);
+
+    const res = await client.query(
+      `SELECT r.id, r.fountain_id, r.user_id, r.user_name, r.user_email, r.rating, r.flavor_description, r.comments, r.created_at
+       FROM reviews r WHERE r.fountain_id = $1 ORDER BY r.created_at DESC`,
+      [id]
+    );
+    return res.rows;
+  } catch (err) {
+    console.error('Error fetching reviews:', err);
+    return [];
+  } finally {
+    client.release();
+  }
+}
+
 export default async function FountainDetailPage({ params }: { params: { id: string } }) {
   const id = Number(params.id);
   if (Number.isNaN(id)) return notFound();
 
   const fountain = await getFountainById(id);
   if (!fountain) return notFound();
+
+  const reviews = await getReviewsByFountainId(id);
 
   return (
     <div className="bg-gray-900 max-w-3xl mx-auto p-6 rounded-2xl shadow">
@@ -73,6 +108,48 @@ export default async function FountainDetailPage({ params }: { params: { id: str
           ))}
         </div>
       )}
+
+      <section className="mt-8 bg-white p-4 rounded-lg">
+        <h2 className="text-xl font-semibold mb-3 text-black">User Reviews</h2>
+
+        {/* Review submission form (client) */}
+        <div className="mb-6">
+          {/* ReviewForm will show sign-in prompt if user is not signed in */}
+          {/* @ts-expect-error Server component importing client component */}
+          <ReviewForm fountainId={id} />
+        </div>
+
+        {/* Existing reviews */}
+        <div className="space-y-4">
+          {reviews.length === 0 && (
+            <p className="text-gray-800">No reviews yet. Be the first to review this fountain!</p>
+          )}
+
+          {reviews.map((r: any) => (
+            <div key={r.id} className="border rounded p-3">
+              <div className="flex items-center justify-between">
+                <div className="text-sm font-medium text-gray-600">{r.user_name || r.user_email}</div>
+                <div className="text-sm text-gray-600">{new Date(r.created_at).toLocaleString()}</div>
+              </div>
+              <div className="mt-2 flex items-center gap-4">
+                <div className="text-lg font-semibold text-black">Rating: {r.rating ?? '—'} / 10</div>
+              </div>
+              {r.flavor_description && (
+                <div className="mt-2">
+                  <h3 className="font-semibold text-gray-800">Flavor description</h3>
+                  <p className="text-gray-700">{r.flavor_description}</p>
+                </div>
+              )}
+              {r.comments && (
+                <div className="mt-2">
+                  <h3 className="font-semibold text-gray-800">Comments</h3>
+                  <p className="text-gray-700">{r.comments}</p>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }
