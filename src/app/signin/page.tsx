@@ -34,7 +34,12 @@ export default function SignInPage() {
         return;
       }
 
-      // on success, navigate to home (or dashboard)
+      // on success, store user in localStorage and navigate to home
+      try {
+        localStorage.setItem('rf_user', JSON.stringify(data.user));
+      } catch (err) {
+        console.warn('Could not persist user to localStorage', err);
+      }
       router.push('/');
     } catch (err) {
       console.error('Sign in error', err);
