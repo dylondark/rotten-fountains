@@ -46,7 +46,7 @@ export default async function FountainDetailPage({ params }: { params: { id: str
       </div>
 
       <p className="text-lg font-semibold mb-4">
-        💧 Flavor Rating: {fountain.flavorRating.toFixed(1)} / 10
+        💧 Flavor Rating: {fountain.flavorRating} / 10
       </p>
 
       {fountain.images && (
