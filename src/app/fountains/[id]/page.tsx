@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Fountain } from "@/components/types/fountain";
 import pool from "@/utils/postgres";
 import ReviewForm from "@/components/reviews/ReviewForm";
+import DeleteReviewButton from '@/components/reviews/DeleteReviewButton';
 import { numberToGrade } from '@/utils/ratings';
 
 async function getFountainById(id: number): Promise<Fountain | null> {
@@ -118,7 +119,6 @@ export default async function FountainDetailPage({ params }: { params: { id: str
         {/* Review submission form (client) */}
         <div className="mb-6">
           {/* ReviewForm will show sign-in prompt if user is not signed in */}
-          {/* @ts-expect-error Server component importing client component */}
           <ReviewForm fountainId={id} />
         </div>
 
@@ -132,7 +132,10 @@ export default async function FountainDetailPage({ params }: { params: { id: str
             <div key={r.id} className="border rounded p-3">
               <div className="flex items-center justify-between">
                 <div className="text-sm font-medium text-gray-600">{r.user_name || r.user_email}</div>
-                <div className="text-sm text-gray-600">{new Date(r.created_at).toLocaleString()}</div>
+                <div className="flex items-center gap-4">
+                  <div className="text-sm text-gray-600">{new Date(r.created_at).toLocaleString()}</div>
+                  <DeleteReviewButton review={r} fountainId={id} />
+                </div>
               </div>
                     <div className="mt-2 flex items-center gap-4">
                       <div className="text-lg font-semibold text-black">Rating: {numberToGrade(r.rating)}</div>
