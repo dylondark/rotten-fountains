@@ -37,7 +37,29 @@ export function Navbar() {
       }
     }
 
-    window.addEventListener('storage', onStorage);
+    // Listen for same-tab sign-in/sign-out events. The StorageEvent doesn't fire
+    // in the same tab that performs localStorage updates, so we dispatch a
+    // custom event from the sign-in page and listen for it here.
+    function onRfUser(e: Event) {
+      try {
+        const ce = e as CustomEvent;
+        if (ce && ce.detail) {
+          setUser(ce.detail);
+          return;
+        }
+      } catch {}
+
+      // Fallback: read from localStorage
+      try {
+        const raw2 = localStorage.getItem('rf_user');
+        setUser(raw2 ? JSON.parse(raw2) : null);
+      } catch {
+        setUser(null);
+      }
+    }
+
+  window.addEventListener('storage', onStorage);
+  window.addEventListener('rf_user', onRfUser as EventListener);
 
     function onClickOutside(ev: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(ev.target as Node)) {
@@ -48,6 +70,7 @@ export function Navbar() {
 
     return () => {
       window.removeEventListener('storage', onStorage);
+      window.removeEventListener('rf_user', onRfUser as EventListener);
       document.removeEventListener('click', onClickOutside);
     };
   }, []);

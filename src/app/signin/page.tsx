@@ -37,6 +37,10 @@ export default function SignInPage() {
       // on success, store user in localStorage and navigate to home
       try {
         localStorage.setItem('rf_user', JSON.stringify(data.user));
+        // notify same-tab listeners (storage event doesn't fire in the same tab)
+        try {
+          window.dispatchEvent(new CustomEvent('rf_user', { detail: data.user }));
+        } catch {}
       } catch (err) {
         console.warn('Could not persist user to localStorage', err);
       }
