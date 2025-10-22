@@ -86,6 +86,31 @@ npm run test:db
 npm run dev
 ```
 
+## Importing data from a spreadsheet (CSV)
+
+If your fountain data is in a spreadsheet (Excel or Google Sheets), export it as CSV and then import it into the database using the provided script.
+
+Expected CSV headers (case-insensitive):
+- number
+- location
+- description
+- flavorDescription (or flavordescription)
+- flavorRating
+- images (optional) — can be a comma/pipe/semicolon-separated list of image paths or URLs
+
+Example export and import:
+
+1. In Google Sheets: File → Download → Comma-separated values (.csv, current sheet)
+2. From the project root, run:
+
+```bash
+# create DB and .env as documented earlier, then:
+npm install csv-parse
+npm run import:csv path/to/your-export.csv
+```
+
+The script will parse the CSV and insert rows into the `fountains` table. If you need to transform columns, edit `scripts/import-csv.js` to map headers.
+
 ## Notes
 - The project uses `src/utils/postgres.js` which reads connection settings from env vars. Do not commit `.env` to git.
 - If you see Node ESM warnings when running `npm run seed` or `npm run test:db`, you can add `"type": "module"` to `package.json` or ignore the warning. The scripts run fine under ESM.

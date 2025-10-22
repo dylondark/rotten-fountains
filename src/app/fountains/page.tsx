@@ -24,7 +24,7 @@ async function getFountainsFromDb(): Promise<Fountain[]> {
   }
 }
 
-export default async function FountainsPage({ searchParams }: { searchParams?: { q?: string } }) {
+export default async function FountainsPage({ searchParams }: { searchParams?: any }) {
   let fountains: Fountain[] = [];
   try {
     fountains = await getFountainsFromDb();
@@ -34,7 +34,8 @@ export default async function FountainsPage({ searchParams }: { searchParams?: {
   }
 
   // If a query is provided, filter the results server-side.
-  const q = (searchParams && searchParams.q) ? String(searchParams.q).trim().toLowerCase() : "";
+  const params = await searchParams;
+  const q = (params && params.q) ? String(params.q).trim().toLowerCase() : "";
   let filtered = fountains;
   if (q) {
     filtered = fountains.filter((f) => {
