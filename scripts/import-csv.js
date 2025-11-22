@@ -1,36 +1,12 @@
 import fs from 'fs/promises';
 import { parse } from 'csv-parse/sync';
 import pool from '../src/utils/postgres.js';
+import xlsx from 'xlsx';
 
-function convertRatingCell(cell) {
-  if (cell === null || cell === undefined || String(cell).trim() === '') return null;
-  const s = String(cell).trim();
-
-  // If purely numeric (single number), return that
-  if (!isNaN(Number(s))) return Number(s);
-
-  // If comma/pipe/semicolon-separated numbers, average them
-  const parts = s.split(/[,;|]/).map(p => p.trim()).filter(Boolean);
-  const numericParts = parts.filter(p => !isNaN(Number(p))).map(Number);
-  if (numericParts.length > 0) {
-    return numericParts.reduce((a,b) => a+b, 0) / numericParts.length;
-  }
-
-  // Otherwise try letter-grade mapping
-  const map = {
-    'A+': 10, 'A': 9.5, 'A-': 9.0,
-    'B+': 8.0, 'B': 7.5, 'B-': 7.0,
-    'C+': 6.5, 'C': 6.0, 'C-': 5.5,
-    'D': 4.0, 'F': 2.0
-  };
-
-  // split non-numeric list, map letters, average if multiple
-  const letterParts = s.split(/[,;|]/).map(p => p.trim().toUpperCase()).filter(Boolean);
-  const mapped = letterParts.map(p => map[p]).filter(v => v !== undefined);
-  if (mapped.length > 0) return mapped.reduce((a,b) => a+b, 0) / mapped.length;
-
-  // fallback
-  return null;
+// We no longer convert ratings; we preserve the raw string exactly as in the source file.
+function keepRawRating(cell) {
+  if (cell === null || cell === undefined) return '';
+  return String(cell).trim();
 }
 
 function normalizeImagesCell(cell) {
@@ -42,42 +18,106 @@ function normalizeImagesCell(cell) {
   });
 }
 
+async function ensureSchema(client) {
+  // Unified schema: single flavorrating TEXT column storing raw string; drop/merge any previous numeric or raw columns.
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS fountains (
+      id SERIAL PRIMARY KEY,
+      number TEXT,
+      location TEXT,
+      description TEXT,
+      flavordescription TEXT,
+      flavorrating TEXT,
+      images TEXT[],
+      other TEXT,
+      video TEXT
+    );
+  `);
+  // Force flavorrating to TEXT unconditionally (handles prior REAL type).
+  try {
+    await client.query("ALTER TABLE fountains ALTER COLUMN flavorrating TYPE TEXT USING flavorrating::TEXT;");
+  } catch (e) {
+    // ignore if already TEXT
+  }
+  // Migrate and drop legacy flavorrating_raw if present.
+  try {
+    const colCheck = await client.query("SELECT column_name FROM information_schema.columns WHERE table_name='fountains' AND column_name='flavorrating_raw'");
+    if (colCheck.rows.length) {
+      await client.query("UPDATE fountains SET flavorrating = COALESCE(flavorrating_raw, flavorrating)");
+      await client.query("ALTER TABLE fountains DROP COLUMN flavorrating_raw");
+    }
+  } catch (e) {
+    // ignore
+  }
+  // Ensure other/video columns exist
+  try { await client.query("ALTER TABLE fountains ADD COLUMN IF NOT EXISTS other TEXT;"); } catch (e) {}
+  try { await client.query("ALTER TABLE fountains ADD COLUMN IF NOT EXISTS video TEXT;"); } catch (e) {}
+}
+
 async function importCsv(filePath, opts = { dryRun: false, batchSize: 500 }) {
-  const raw = await fs.readFile(filePath, 'utf8');
-  const records = parse(raw, {
-    columns: true,
-    skip_empty_lines: true,
-    trim: true,
-  });
+  let records = [];
+  if (filePath.endsWith('.xlsx') || filePath.endsWith('.xls')) {
+    // read the first sheet from the workbook and convert to JSON records
+    const workbook = xlsx.readFile(filePath);
+    const sheetName = workbook.SheetNames[0];
+    records = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: '' });
+  } else {
+    const raw = await fs.readFile(filePath, 'utf8');
+    records = parse(raw, {
+      columns: true,
+      skip_empty_lines: true,
+      trim: true,
+    });
+  }
 
   console.log(`Parsed ${records.length} rows from ${filePath}`);
 
   const client = await pool.connect();
   try {
-    const insertText = `INSERT INTO fountains (number, location, description, flavordescription, flavorrating, images) VALUES ($1,$2,$3,$4,$5,$6)`;
+    await ensureSchema(client);
+  const insertText = `INSERT INTO fountains (number, location, description, flavordescription, flavorrating, images, other, video) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`;
 
     // Basic validation and transformation
-    const rows = records.map((row) => {
-      const number = row.number || row.Number || '';
-      const location = row.location || row.Location || '';
-      const description = row.description || row.Description || '';
-      const flavorDescription = row.flavorDescription || row.flavordescription || row['flavor description'] || '';
-
-      const rawRating = row.flavorRating || row.flavorrating || '';
-      const flavorRating = convertRatingCell(rawRating);
-
-      const rawImages = row.images || row.Images || '';
-      const images = normalizeImagesCell(rawImages);
-
-      return { number, location, description, flavorDescription, flavorRating, images };
-    }).filter(r => {
-      // require minimal fields
-      if (!r.number || !r.location) {
-        console.warn('Skipping row with missing required fields number/location:', r);
-        return false;
+      function getField(row, variants) {
+        for (const v of variants) {
+          if (v in row && String(row[v]).trim() !== '') return String(row[v]).trim();
+          const lower = Object.keys(row).find(k => k.toLowerCase() === v.toLowerCase());
+          if (lower && String(row[lower]).trim() !== '') return String(row[lower]).trim();
+        }
+        return '';
       }
-      return true;
-    });
+
+      let autoCounter = 1;
+  const rows = records.map((row) => {
+        // Map common spreadsheet headers to canonical fields
+        const floor = getField(row, ['Floor','floor']);
+        const fountainNumberRaw = getField(row, ['Fountain Number','number','Fountain','Fountain #','fountain number']);
+        const descField = getField(row, ['Fountain Description/Location','Fountain Description','Location','description']);
+        // Compose location: prefer explicit campus floor prefix if present
+        const locationParts = [];
+        if (floor) locationParts.push(floor);
+        if (descField) locationParts.push(descField);
+        const location = locationParts.join(' - ');
+        const number = fountainNumberRaw || (location ? `AUTO-${autoCounter++}` : '');
+        const description = descField;
+        const flavorDescription = getField(row, ['Flavor Description','flavorDescription','flavordescription']);
+  const rawRatingOriginal = getField(row, ['Flavor Rating','flavorRating','flavorrating']);
+  const flavorRating = keepRawRating(rawRatingOriginal); // raw string only
+        const other = getField(row, ['Other','Notes']);
+        const video = getField(row, ['Video of water','Video']);
+        // images: combine image columns
+        const img1 = getField(row, ['Image of Fountain','Image','Image of Water in Cup','images','Images']);
+        let images = [];
+        if (img1) images = images.concat(normalizeImagesCell(img1));
+        return { number, location, description, flavorDescription, flavorRating, images, other, video };
+      }).filter(r => {
+        // Keep rows that have either a number or a location; discard totally empty metadata lines
+        if (!r.number && !r.location) {
+          console.warn('Skipping empty metadata row:', r);
+          return false;
+        }
+        return true;
+      });
 
     if (opts.dryRun) {
       console.log('Dry run mode — no DB changes will be made. Example transformed rows:');
@@ -91,7 +131,16 @@ async function importCsv(filePath, opts = { dryRun: false, batchSize: 500 }) {
       for (let i = 0; i < rows.length; i += opts.batchSize) {
         const batch = rows.slice(i, i + opts.batchSize);
         for (const r of batch) {
-          await client.query(insertText, [r.number, r.location, r.description, r.flavorDescription, r.flavorRating, r.images]);
+          await client.query(insertText, [
+            r.number || null,
+            r.location || null,
+            r.description || null,
+            r.flavorDescription || null,
+            r.flavorRating || null, // raw string in flavorrating column
+            r.images,
+            r.other || null,
+            r.video || null
+          ]);
         }
         console.log(`Inserted batch ${i / opts.batchSize + 1} (${batch.length} rows)`);
       }

@@ -14,8 +14,8 @@ async function getFountainsFromDb(limit = 3): Promise<Fountain[]> {
       number: r.number,
       location: r.location,
       description: r.description,
-      flavorDescription: r.flavordescription || r.flavorDescription || "",
-      flavorRating: r.flavorrating || r.flavorRating || 0,
+  flavorDescription: r.flavordescription || r.flavorDescription || "",
+  flavorRating: r.flavorrating || "",
       images: r.images || [],
     }));
   } finally {

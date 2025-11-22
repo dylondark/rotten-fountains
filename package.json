@@ -10,6 +10,7 @@
     "seed": "node ./scripts/seed.js",
     "test:db": "node ./scripts/test-connection.js",
     "import:csv": "node ./scripts/import-csv.js"
+    ,"fix:schema": "node ./scripts/fix-schema.js"
   },
   "dependencies": {
     "lucide-react": "^0.544.0",
@@ -22,6 +23,7 @@
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
     "csv-parse": "^6.0.0",
+  "xlsx": "^0.18.5",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

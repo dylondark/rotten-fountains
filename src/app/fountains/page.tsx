@@ -1,7 +1,7 @@
 "use server";
 
 import FountainCard from "@/components/fountains/FountainCard";
-import { numberToGrade } from '@/utils/ratings';
+// numberToGrade no longer needed since we store raw rating strings.
 import { Fountain } from "@/components/types/fountain";
 import pool from "@/utils/postgres";
 
@@ -15,8 +15,8 @@ async function getFountainsFromDb(): Promise<Fountain[]> {
       number: r.number,
       location: r.location,
       description: r.description,
-      flavorDescription: r.flavordescription || r.flavorDescription || "",
-      flavorRating: r.flavorrating || r.flavorRating || 0,
+  flavorDescription: r.flavordescription || r.flavorDescription || "",
+  flavorRating: r.flavorrating || "",
       images: r.images || [],
     }));
   } finally {
@@ -46,12 +46,9 @@ export default async function FountainsPage({ searchParams }: { searchParams?: a
 
       const strMatch = checks.some((s) => s.includes(q));
 
-  // also allow matching numeric flavorRating (e.g. searching '8.5' or '8')
+  // match raw rating string directly
   const ratingMatch = String(f.flavorRating).toLowerCase().includes(q);
-  // allow matching letter grades (e.g. 'A', 'B+')
-  const gradeMatch = String(numberToGrade(f.flavorRating)).toLowerCase().includes(q);
-
-  return strMatch || ratingMatch || gradeMatch;
+  return strMatch || ratingMatch;
     });
   }
 
