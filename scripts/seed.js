@@ -89,26 +89,8 @@ async function seed() {
     ];
 
     for (const row of sample) {
-      // row format: [number, location, description, flavordescription, flavorrating, images]
-      let flavorRating = row[4];
-      // If flavorRating is a number-like string, convert it. Otherwise set to null so numeric DB columns accept it.
-      if (flavorRating === null || flavorRating === undefined || flavorRating === '') {
-        flavorRating = null;
-      } else if (!isNaN(Number(flavorRating))) {
-        flavorRating = Number(flavorRating);
-      } else {
-        // Attempt to extract a numeric value if the field contains comma-separated numeric parts like '8.5,9'
-        const numericParts = String(flavorRating).split(/[,;|]/).map(s => s.trim()).filter(s => s !== '' && !isNaN(Number(s))).map(Number);
-        if (numericParts.length > 0) {
-          // use average of numeric parts
-          const avg = numericParts.reduce((a,b) => a+b, 0) / numericParts.length;
-          flavorRating = avg;
-        } else {
-          // not numeric (e.g. letter grades like 'B-,B+,A'), store NULL
-          flavorRating = null;
-        }
-      }
-
+      // Store raw flavor rating string exactly as provided (column is TEXT)
+      const flavorRating = row[4] === undefined ? null : row[4];
       await client.query(insertText, [row[0], row[1], row[2], row[3], flavorRating, row[5]]);
     }
 

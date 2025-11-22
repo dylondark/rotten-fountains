@@ -75,7 +75,8 @@ async function importCsv(filePath, opts = { dryRun: false, batchSize: 500 }) {
   const client = await pool.connect();
   try {
     await ensureSchema(client);
-  const insertText = `INSERT INTO fountains (number, location, description, flavordescription, flavorrating, images, other, video) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`;
+    // Single INSERT statement with RETURNING so we can build id-based image placeholders.
+    const insertText = `INSERT INTO fountains (number, location, description, flavordescription, flavorrating, images, other, video) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id, images`;
 
     // Basic validation and transformation
       function getField(row, variants) {
@@ -105,10 +106,12 @@ async function importCsv(filePath, opts = { dryRun: false, batchSize: 500 }) {
   const flavorRating = keepRawRating(rawRatingOriginal); // raw string only
         const other = getField(row, ['Other','Notes']);
         const video = getField(row, ['Video of water','Video']);
-        // images: combine image columns
-        const img1 = getField(row, ['Image of Fountain','Image','Image of Water in Cup','images','Images']);
+        // Images: capture fountain + cup separately; generate placeholders if both missing.
+        const fountainImgRaw = getField(row, ['Image of Fountain']);
+        const cupImgRaw = getField(row, ['Image of Water in Cup']);
         let images = [];
-        if (img1) images = images.concat(normalizeImagesCell(img1));
+        if (fountainImgRaw) images = images.concat(normalizeImagesCell(fountainImgRaw));
+        if (cupImgRaw) images = images.concat(normalizeImagesCell(cupImgRaw));
         return { number, location, description, flavorDescription, flavorRating, images, other, video };
       }).filter(r => {
         // Keep rows that have either a number or a location; discard totally empty metadata lines
@@ -131,16 +134,29 @@ async function importCsv(filePath, opts = { dryRun: false, batchSize: 500 }) {
       for (let i = 0; i < rows.length; i += opts.batchSize) {
         const batch = rows.slice(i, i + opts.batchSize);
         for (const r of batch) {
-          await client.query(insertText, [
+          const resInsert = await client.query(insertText, [
             r.number || null,
             r.location || null,
             r.description || null,
             r.flavorDescription || null,
             r.flavorRating || null, // raw string in flavorrating column
-            r.images,
+            r.images, // may be empty array
             r.other || null,
             r.video || null
           ]);
+          if (!resInsert.rows.length) {
+            console.warn('Insert returned no rows (unexpected), skipping placeholder generation for:', r.number);
+            continue;
+          }
+          const insertedId = resInsert.rows[0].id;
+          const currentImages = resInsert.rows[0].images || [];
+          if (!currentImages || currentImages.length === 0) {
+            const placeholders = [
+              `/fountains/${insertedId}_fountain.jpg`,
+              `/fountains/${insertedId}_cup.jpg`
+            ];
+            await client.query('UPDATE fountains SET images = $1 WHERE id = $2', [placeholders, insertedId]);
+          }
         }
         console.log(`Inserted batch ${i / opts.batchSize + 1} (${batch.length} rows)`);
       }
