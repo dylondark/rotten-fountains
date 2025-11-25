@@ -48,7 +48,7 @@ export default async function updateAllTasteProfiles(options = {}) {
 
     // Load fountains once to provide candidates for recommendations
     const fountainsRes = await client.query(`
-      SELECT id, number, location, description, flavordescription, flavorrating FROM fountains
+      SELECT id, description, flavordescription, flavorrating, other FROM fountains
     `);
     const fountains = fountainsRes.rows || [];
 
@@ -91,9 +91,9 @@ export default async function updateAllTasteProfiles(options = {}) {
         let recommendedIds = [];
 
         if (fountains.length > 0) {
-          const fountainsText = fountains.map(f => `ID:${f.id} | ${f.number || ''} | ${f.location || ''} | flavor:${f.flavordescription || ''} | desc:${(f.description || '').slice(0,200)}`).join('\n');
+          const fountainsText = fountains.map(f => `ID:${f.id} | flavor:${f.flavordescription || ''} | description:${(f.description || '').slice(0,200)} | other information:${(f.other || '').slice(0,200)}`).join('\n');
 
-          const pickPrompt = `Given the user's taste profile below, select up to three fountains from the following list that the user would most likely enjoy. Return ONLY a JSON array of integers (fountain ids), e.g. [1,2,3]. Do not include any other text.\n\nTaste profile:\n${tasteProfile}\n\nFountains:\n${fountainsText}\n\nSelected ids:`;
+          const pickPrompt = `You will be provided with a list of water fountain descriptions as well as their ID numbers. Given the user's taste profile below, select up to three fountains from the list that the user would most likely enjoy. Return ONLY a JSON array of integers containing the fountain IDs you have chosen, e.g. [1,2,3]. Do not include any other text.\n\nTaste profile:\n${tasteProfile}\n\nFountains:\n${fountainsText}\n\nSelected ids:`;
 
           try {
             const pickResp = await callOllama(pickPrompt, { ollamaUrl, model, max_tokens: 200 });
