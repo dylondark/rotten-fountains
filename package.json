@@ -11,7 +11,8 @@
     "seed": "node ./scripts/seed.js",
     "test:db": "node ./scripts/test-connection.js",
     "import:csv": "node ./scripts/import-csv.js",
-    "fix:schema": "node ./scripts/fix-schema.js"
+    "fix:schema": "node ./scripts/fix-schema.js",
+    "update:taste-profiles": "node ./scripts/update-taste-profiles.js"
   },
   "dependencies": {
     "lucide-react": "^0.544.0",
