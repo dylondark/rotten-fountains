@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -85,9 +86,12 @@ export function Navbar() {
   return (
     <nav className="bg-white shadow sticky top-0 z-10">
       <div className="container mx-auto px-4 py-3 flex justify-between items-center">
-        <Link href="/" className="text-2xl font-bold text-blue-600">
-          RottenFountains
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link href="/" className="text-2xl font-bold text-blue-600 flex items-center gap-4">
+            <Image src="/logo/transparent_full_blue.png" alt="RottenFountains Logo" width={40} height={40} />
+            RottenFountains
+          </Link>
+        </div>
         <div className="flex items-center gap-4">
           {/* Search box - navigates to /fountains?q=... */}
           <form onSubmit={onSubmit} className="hidden sm:block">
