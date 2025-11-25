@@ -3,7 +3,7 @@ import pool from './postgres.js';
 const DEFAULT_OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434';
 const DEFAULT_MODEL = process.env.OLLAMA_MODEL || 'llama2';
 
-async function callOllama(prompt, { ollamaUrl = DEFAULT_OLLAMA_URL, model = DEFAULT_MODEL, max_tokens = 4096 } = {}) {
+async function callOllama(prompt, { ollamaUrl = DEFAULT_OLLAMA_URL, model = DEFAULT_MODEL, max_tokens = 8192 } = {}) {
   const url = `${ollamaUrl.replace(/\/$/, '')}/api/generate`;
 
   const res = await fetch(url, {
@@ -41,9 +41,16 @@ export default async function updateAllTasteProfiles(options = {}) {
       CREATE TABLE IF NOT EXISTS taste_profile (
         user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
         taste_profile TEXT,
+        recommended_fountain_ids INTEGER[],
         last_updated TIMESTAMPTZ DEFAULT now()
       );
     `);
+
+    // Load fountains once to provide candidates for recommendations
+    const fountainsRes = await client.query(`
+      SELECT id, number, location, description, flavordescription, flavorrating FROM fountains
+    `);
+    const fountains = fountainsRes.rows || [];
 
     // Fetch users that have at least one review tied to a user_id
     const res = await client.query(`
@@ -80,10 +87,44 @@ export default async function updateAllTasteProfiles(options = {}) {
 
         const tasteProfile = String(llmResp || '').trim();
 
+        // Now ask the LLM to pick up to 3 fountain ids that the user may like based on the taste profile.
+        let recommendedIds = [];
+
+        if (fountains.length > 0) {
+          const fountainsText = fountains.map(f => `ID:${f.id} | ${f.number || ''} | ${f.location || ''} | flavor:${f.flavordescription || ''} | desc:${(f.description || '').slice(0,200)}`).join('\n');
+
+          const pickPrompt = `Given the user's taste profile below, select up to three fountains from the following list that the user would most likely enjoy. Return ONLY a JSON array of integers (fountain ids), e.g. [1,2,3]. Do not include any other text.\n\nTaste profile:\n${tasteProfile}\n\nFountains:\n${fountainsText}\n\nSelected ids:`;
+
+          try {
+            const pickResp = await callOllama(pickPrompt, { ollamaUrl, model, max_tokens: 200 });
+            const pickText = String(pickResp || '').trim();
+
+            // Try to parse JSON array
+            try {
+              const parsed = JSON.parse(pickText);
+              if (Array.isArray(parsed)) {
+                recommendedIds = parsed.map(n => parseInt(n, 10)).filter(Number.isFinite);
+              } else if (parsed?.ids && Array.isArray(parsed.ids)) {
+                recommendedIds = parsed.ids.map(n => parseInt(n, 10)).filter(Number.isFinite);
+              }
+            } catch (e) {
+              // Fallback: extract up to 3 integers from the response text
+              const nums = Array.from(pickText.matchAll(/\d+/g)).map(m => parseInt(m[0], 10));
+              recommendedIds = nums.slice(0, 3).filter(n => Number.isFinite(n));
+            }
+
+            // Ensure recommended ids exist in the fountains list
+            const fountainIdSet = new Set(fountains.map(f => f.id));
+            recommendedIds = recommendedIds.filter(id => fountainIdSet.has(id)).slice(0, 3);
+          } catch (err) {
+            console.error(`Error picking fountains for user ${userId}:`, err?.message || err);
+          }
+        }
+
         await client.query(
-          `INSERT INTO taste_profile (user_id, taste_profile, last_updated) VALUES ($1,$2,now())
-           ON CONFLICT (user_id) DO UPDATE SET taste_profile = EXCLUDED.taste_profile, last_updated = EXCLUDED.last_updated`,
-          [userId, tasteProfile]
+          `INSERT INTO taste_profile (user_id, taste_profile, recommended_fountain_ids, last_updated) VALUES ($1,$2,$3,now())
+           ON CONFLICT (user_id) DO UPDATE SET taste_profile = EXCLUDED.taste_profile, recommended_fountain_ids = EXCLUDED.recommended_fountain_ids, last_updated = EXCLUDED.last_updated`,
+          [userId, tasteProfile, recommendedIds]
         );
 
         results.updated += 1;
