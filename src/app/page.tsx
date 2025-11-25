@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import FountainCard from "@/components/fountains/FountainCard";
+import TasteRecommendations from '@/components/taste/TasteRecommendations';
 import { Fountain } from "@/components/types/fountain";
 import pool from "@/utils/postgres";
 import Image from "next/image";
@@ -49,6 +50,9 @@ export default async function HomePage() {
           </div>
         </section>
       )}
+
+      {/* Client-side recommendations shown when user is signed-in and has a taste profile */}
+      <TasteRecommendations />
 
       <Link href="/fountains" className="px-6 py-3 bg-blue-600 text-white rounded-full hover:bg-blue-700">
         Browse Fountains

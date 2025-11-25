@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { Droplets } from "lucide-react";
 import { Fountain } from "@/components/types/fountain";
