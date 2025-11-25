@@ -4,6 +4,7 @@ import Link from "next/link";
 import FountainCard from "@/components/fountains/FountainCard";
 import { Fountain } from "@/components/types/fountain";
 import pool from "@/utils/postgres";
+import Image from "next/image";
 
 async function getFountainsFromDb(limit = 3): Promise<Fountain[]> {
   const client = await pool.connect();
@@ -35,6 +36,7 @@ export default async function HomePage() {
   return (
     <div className="text-center mt-6">
       <h1 className="text-4xl font-bold mb-4 text-blue-600">Welcome to RottenFountains</h1>
+      <Image src="/logo/transparent_bg.png" alt="RottenFountains Logo" width={150} height={150} className="mx-auto mb-4" />
       <p className="text-gray-600 mb-8">Explore and rate the best drinking fountains on your college campus.</p>
 
       {featured.length > 0 && (
