@@ -37,7 +37,7 @@ export default async function HomePage() {
     <div className="text-center mt-6">
       <h1 className="text-4xl font-bold mb-4 text-blue-600">Welcome to RottenFountains</h1>
       <Image src="/logo/transparent_bg.png" alt="RottenFountains Logo" width={150} height={150} className="mx-auto mb-4" />
-      <p className="text-gray-600 mb-8">Explore and rate the best drinking fountains on your college campus.</p>
+      <p className="text-gray-400 mb-8">Explore and rate the drinking fountains at the University of Akron.</p>
 
       {featured.length > 0 && (
         <section className="mb-8">
