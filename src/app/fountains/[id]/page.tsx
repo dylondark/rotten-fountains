@@ -2,9 +2,11 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { Fountain } from "@/components/types/fountain";
 import pool from "@/utils/postgres";
+import { getVideoUrlsForId } from "@/utils/videos";
 import ReviewForm from "@/components/reviews/ReviewForm";
 import DeleteReviewButton from '@/components/reviews/DeleteReviewButton';
 import { numberToGrade } from '@/utils/ratings';
+import Gallery from "@/components/media/Gallery";
 
 async function getFountainById(id: number): Promise<Fountain | null> {
   const client = await pool.connect();
@@ -12,6 +14,7 @@ async function getFountainById(id: number): Promise<Fountain | null> {
     const res = await client.query("SELECT * FROM fountains WHERE id = $1", [id]);
     if (res.rows.length === 0) return null;
     const r: any = res.rows[0];
+    const videos = await getVideoUrlsForId(id, r.video || r.videos);
     return {
       id: r.id,
       number: r.number,
@@ -20,7 +23,7 @@ async function getFountainById(id: number): Promise<Fountain | null> {
       flavorDescription: r.flavordescription || r.flavorDescription || "",
       flavorRating: r.flavorrating || r.flavorRating || 0,
       images: r.images || [],
-      videos: r.videos || [],
+      videos,
     };
   } catch (err) {
     console.error("DB error fetching fountain:", err);
@@ -88,30 +91,7 @@ export default async function FountainDetailPage({ params }: { params: { id: str
         💧 Flavor Rating: {fountain.flavorRating}
       </p>
 
-      {fountain.images && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {fountain.images.map((src, i) => (
-            <Image
-              key={i}
-              src={src}
-              alt={`${fountain.number} photo ${i + 1}`}
-              width={600}
-              height={400}
-              className="rounded-xl"
-            />
-          ))}
-        </div>
-      )}
-
-      {fountain.videos && fountain.videos.length > 0 && (
-        <div className="mt-6 space-y-4">
-          {fountain.videos.map((url, i) => (
-            <video key={i} controls className="w-full rounded-xl">
-              <source src={url} type="video/mp4" />
-            </video>
-          ))}
-        </div>
-      )}
+      <Gallery images={fountain.images ?? []} videos={fountain.videos ?? []} />
 
       <section className="mt-8 bg-white p-4 rounded-lg">
         <h2 className="text-xl font-semibold mb-3 text-black">User Reviews</h2>

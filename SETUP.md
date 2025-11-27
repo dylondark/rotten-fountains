@@ -105,11 +105,43 @@ Example export and import:
 
 ```bash
 # create DB and .env as documented earlier, then:
-npm install csv-parse
-npm run import:csv path/to/your-export.csv
+# CSV or XLSX are supported. Example with the included file:
+npm run import:csv Rotten_Fountains.csv
+
+# Options:
+#   --dry-run           parse + transform only, no DB writes
+#   --batch-size 1000  change insert batch size (default 500)
+node ./scripts/import-csv.js --dry-run Rotten_Fountains.csv
 ```
 
 The script will parse the CSV and insert rows into the `fountains` table. If you need to transform columns, edit `scripts/import-csv.js` to map headers.
+
+## Removing tables (DROP vs TRUNCATE)
+
+- To remove all rows but keep a table and its identity sequence, use TRUNCATE:
+
+```bash
+psql "postgresql://postgres:admin@localhost:5432/restapi" -c "TRUNCATE TABLE fountains RESTART IDENTITY;"
+```
+
+- To delete a table entirely (and optionally its dependencies), use the new helper script:
+
+```bash
+# Drop one or more tables
+npm run drop:tables -- fountains
+
+# Drop with CASCADE (also drops dependent objects)
+npm run drop:tables -- --cascade fountains
+
+# Or multiple tables at once
+npm run drop:tables -- fountains reviews
+```
+
+You can also run the equivalent SQL directly:
+
+```bash
+psql "postgresql://postgres:admin@localhost:5432/restapi" -c "DROP TABLE IF EXISTS fountains CASCADE;"
+```
 
 ## Notes
 - The project uses `src/utils/postgres.js` which reads connection settings from env vars. Do not commit `.env` to git.
