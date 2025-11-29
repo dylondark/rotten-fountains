@@ -1,3 +1,124 @@
+# Project Setup: Importing Rotten_Fountains.csv
+
+This guide walks you through configuring the environment, importing the dataset, generating image placeholders, and verifying everything locally.
+
+## Prerequisites
+- Node.js 18+
+- A running PostgreSQL instance
+- CSV or XLSX dataset: `Rotten_Fountains.csv` (or `.xlsx`)
+
+## 1) Install dependencies
+
+```bash
+npm install
+```
+
+## 2) Configure Postgres environment
+Set environment variables so the app and scripts can connect to your database. Adjust values to your setup.
+
+```bash
+export PGHOST=localhost
+export PGPORT=5432
+export PGUSER=your_user
+export PGPASSWORD=your_password
+export PGDATABASE=your_database
+```
+
+Optionally, put these in `.env` or `.env.local`.
+
+## 3) Verify DB connection
+
+```bash
+npm run test:db
+```
+
+## 4) Import the dataset (dry-run first)
+Place your dataset in the repo root or `data/`. Example below assumes `./Rotten_Fountains.csv` at the repo root.
+
+```bash
+# Dry-run (parses and validates, no inserts)
+node scripts/import-csv.js ./Rotten_Fountains.csv --dry-run
+
+# Actual import
+node scripts/import-csv.js ./Rotten_Fountains.csv
+```
+
+If using Excel:
+
+```bash
+node scripts/import-csv.js ./Rotten_Fountains.xlsx --dry-run
+node scripts/import-csv.js ./Rotten_Fountains.xlsx
+```
+
+Notes:
+- Flavor ratings are stored exactly as raw strings.
+- Image paths are set to `/fountains/<id>_fountain.jpg` and `/fountains/<id>_cup.jpg` if your dataset doesn’t provide images.
+
+## 5) Generate local image placeholders
+The app references image paths under `public/fountains/`. If real images are not present, generate 1×1 JPEG placeholders so pages don’t 404.
+
+```bash
+npm run placeholders
+```
+
+This creates files for every fountain id:
+- `public/fountains/<id>_fountain.jpg`
+- `public/fountains/<id>_cup.jpg`
+
+Alternatively, you can add your own real images to `public/fountains/` using the same naming scheme.
+
+## 6) Run the app
+
+```bash
+npm run dev
+```
+
+Open `http://localhost:3000`. Visit a detail page, e.g. `http://localhost:3000/fountains/1`.
+
+## 7) Quick verification queries
+
+```bash
+# See first 10 rows
+psql -c "SELECT id, number, location, flavorrating, images FROM fountains ORDER BY id LIMIT 10;"
+
+# Count total imported rows
+psql -c "SELECT COUNT(*) FROM fountains;"
+```
+
+## Re-import instructions (resetting ids)
+If you need to start over and re-import:
+
+```bash
+psql -c "TRUNCATE TABLE fountains RESTART IDENTITY;"
+node scripts/import-csv.js ./Rotten_Fountains.csv
+npm run placeholders
+```
+
+## Troubleshooting
+- 404 images: run `npm run placeholders` or add real files under `public/fountains/`.
+- Reviews/users warnings: the page logs errors if a `users` table is missing. This doesn’t affect fountains display. We can add a simple `users` table later if needed.
+- ESM warnings: `package.json` includes `"type":"module"` to avoid Node ESM warnings.
+
+### Video playback issues ("No video with supported format")
+Most mobile devices record in HEVC/H.265 (`codec_name=hevc` / `hvc1`). Chrome and some desktop browsers may not decode these files. Re-encode to baseline H.264 + AAC.
+
+Quick check of a file:
+```bash
+ffprobe -v error -select_streams v:0 -show_entries stream=codec_name -of csv=p=0 public/videos/1.mp4
+```
+If output is `hevc`, re-encode:
+```bash
+ffmpeg -i public/videos/1.mp4 -c:v libx264 -profile:v baseline -level 3.0 -pix_fmt yuv420p -c:a aac -movflags +faststart public/videos/1_h264.mp4
+mv public/videos/1_h264.mp4 public/videos/1.mp4
+```
+
+Batch re-encode all videos:
+```bash
+chmod +x scripts/reencode-videos.sh
+./scripts/reencode-videos.sh
+mv public/videos/reencoded/*.mp4 public/videos/
+```
+The script skips files already in H.264. After replacing, refresh the fountain page.
 # Setup for rotten-fountains (Postgres + seed)
 
 This file documents the exact steps to get the project running with a local Postgres database. Use these steps when you clone the repo on a new machine.
@@ -148,4 +269,19 @@ psql "postgresql://postgres:admin@localhost:5432/restapi" -c "DROP TABLE IF EXIS
 - If you see Node ESM warnings when running `npm run seed` or `npm run test:db`, you can add `"type": "module"` to `package.json` or ignore the warning. The scripts run fine under ESM.
 - To reset or re-seed the database, re-run `npm run seed`.
 
-If you want, I can create a small `Makefile` or npm task to automate `docker run`, `.env` creation, and seeding.
+
+npm install
+Env:
+export PGHOST=localhost
+export PGPORT=5432
+export PGUSER=your_user
+export PGPASSWORD=your_password
+export PGDATABASE=your_database
+Dry-run:
+node [import-csv.js](http://_vscodecontentref_/3) [Rotten_Fountains.csv](http://_vscodecontentref_/4) --dry-run
+Import:
+node [import-csv.js](http://_vscodecontentref_/5) ./Rotten_Fountains.csv
+Placeholders:
+npm run placeholders
+Dev:
+npm run dev

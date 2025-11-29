@@ -20,6 +20,7 @@ export default function Gallery({ images = [], videos = [] }: Props) {
   if (!items.length) return null;
 
   const current = items[Math.min(index, items.length - 1)];
+  // Video rotation now handled at encoding time (see reencode script). No CSS rotation needed.
 
   const goPrev = () => setIndex((i) => (i > 0 ? i - 1 : items.length - 1));
   const goNext = () => setIndex((i) => (i < items.length - 1 ? i + 1 : 0));
@@ -37,19 +38,24 @@ export default function Gallery({ images = [], videos = [] }: Props) {
             priority
           />
         ) : (
-          <video controls className="w-full h-auto">
-            <source src={current.src} type="video/mp4" />
+          <video
+            controls
+            className="w-full h-auto"
+            preload="metadata"
+            playsInline
+          >
+            <source src={current.src} />
             Your browser does not support the video tag.
           </video>
         )}
 
         {items.length > 1 && (
-          <div className="absolute inset-y-0 left-0 right-0 flex items-center justify-between px-2">
+          <div className="absolute inset-y-0 left-0 right-0 flex items-center justify-between px-2 pointer-events-none">
             <button
               type="button"
               onClick={goPrev}
               aria-label="Previous"
-              className="bg-white/80 hover:bg-white text-black rounded-full px-3 py-2"
+              className="bg-white/80 hover:bg-white text-black rounded-full px-3 py-2 pointer-events-auto"
             >
               ◀
             </button>
@@ -57,7 +63,7 @@ export default function Gallery({ images = [], videos = [] }: Props) {
               type="button"
               onClick={goNext}
               aria-label="Next"
-              className="bg-white/80 hover:bg-white text-black rounded-full px-3 py-2"
+              className="bg-white/80 hover:bg-white text-black rounded-full px-3 py-2 pointer-events-auto"
             >
               ▶
             </button>
@@ -78,8 +84,8 @@ export default function Gallery({ images = [], videos = [] }: Props) {
               {it.kind === "image" ? (
                 <Image src={it.src} alt="thumb" width={160} height={90} className="w-full h-auto object-cover" />
               ) : (
-                <video className="w-full h-auto" muted>
-                  <source src={it.src} type="video/mp4" />
+                <video className="w-full h-auto" muted preload="metadata" playsInline>
+                  <source src={it.src} />
                 </video>
               )}
             </button>

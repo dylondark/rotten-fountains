@@ -15,6 +15,17 @@ async function getFountainById(id: number): Promise<Fountain | null> {
     if (res.rows.length === 0) return null;
     const r: any = res.rows[0];
     const videos = await getVideoUrlsForId(id, r.video || r.videos);
+    // Filter image paths to only those that physically exist under public/ to avoid 404 placeholders.
+    const rawImages: string[] = Array.isArray(r.images) ? r.images : [];
+    const fs = await import('fs');
+    const path = await import('path');
+    const publicDir = path.join(process.cwd(), 'public');
+    const images = rawImages.filter((p) => {
+      if (!p || typeof p !== 'string') return false;
+      const rel = p.startsWith('/') ? p.slice(1) : p;
+      const abs = path.join(publicDir, rel);
+      try { return fs.existsSync(abs); } catch { return false; }
+    });
     return {
       id: r.id,
       number: r.number,
@@ -22,7 +33,7 @@ async function getFountainById(id: number): Promise<Fountain | null> {
       description: r.description,
       flavorDescription: r.flavordescription || r.flavorDescription || "",
       flavorRating: r.flavorrating || r.flavorRating || 0,
-      images: r.images || [],
+      images,
       videos,
     };
   } catch (err) {
@@ -67,8 +78,9 @@ async function getReviewsByFountainId(id: number) {
   }
 }
 
-export default async function FountainDetailPage({ params }: { params: { id: string } }) {
-  const id = Number(params.id);
+export default async function FountainDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id: idParam } = await params;
+  const id = Number(idParam);
   if (Number.isNaN(id)) return notFound();
 
   const fountain = await getFountainById(id);
